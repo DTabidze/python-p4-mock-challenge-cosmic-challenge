@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 from models import db, Scientist, Mission, Planet
-from flask_restful import Api, Resource
+
 from flask_migrate import Migrate
 from flask import Flask, make_response, jsonify, request
 import os
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql import text
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DATABASE = os.environ.get(
@@ -59,14 +60,15 @@ def get_scientist_by_id(id):
     if not scientist:
         return {"error": "Scientist not found"},404
     if request.method=="GET":
-        return (scientist.to_dict(rules=("missions",))),200
+        return (scientist.to_dict()),200
+        # rules=("missions",)
     elif request.method=="PATCH":
         data = request.json
         try: 
             for attr in data:
                 setattr(scientist,attr,data[attr])
             db.session.commit()
-            return scientist.to_dict(),202
+            return scientist.to_dict(),200
         except (IntegrityError,ValueError) as ie:
             return {"errors":ie.args},400
     elif request.method=="DELETE":
@@ -87,6 +89,8 @@ def get_planets():
 def add_mission():
     if request.method=="POST":
         data = request.json
+        # PRAGMA, this line doesn't allows you to add non existance planet or scientist
+        db.session.execute(text("PRAGMA foreign_keys=on;"))
         mission = Mission()
         try:
             for attr in data:
